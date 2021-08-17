@@ -40,9 +40,6 @@ jobs:
       - checkout
       - restore_cache:
           keys: [frontend-build]
-      # - run:
-      #     working_directory: frontend/
-      #     command: npm build
       - run:
           name: Front-end build
           working_directory: frontend/
@@ -52,9 +49,6 @@ jobs:
       - save_cache:
           paths: [frontend/node_modules]
           key: frontend-build
-      - run:
-          working_directory: frontend/
-          command: npm run lint
 
   build-backend:
     docker:
@@ -72,25 +66,30 @@ jobs:
       - save_cache:
           paths: [backend/node_modules]
           key: backend-build
-      - run:
-          working_directory: backend/
-          command: npm run lint
 
-#   test-frontend:
-#     docker:
-#       # Docker image here
-#     steps:
-#       # Checkout code from git
-#       # Restore from cache
-#       # Your job code here
+  test-frontend:
+    docker:
+      - image: circleci/node:13.8.0
+    steps:
+      - checkout
+      - restore_cache:
+          keys: [frontend-build]
+      - run:
+          name: Front-end test
+          working_directory: frontend/
+          command: npm run test
                 
-#   test-backend:
-#     docker:
-#       # Docker image here
-#     steps:
-#       # Checkout code from git
-#       # Restore from cache
-#       # Your job code here
+  test-backend:
+    docker:
+      - image: circleci/node:13.8.0
+    steps:
+      - checkout
+      - restore_cache:
+          keys: [backend-build]
+      - run:
+          name: Back-end test
+          working_directory: backend/
+          command: npm run test
             
 #   scan-frontend:
 #     docker:
@@ -279,10 +278,10 @@ workflows:
     jobs:
       - build-frontend
       - build-backend
-      # - test-frontend:
-      #     requires: [build-frontend]
-      # - test-backend:
-      #     requires: [build-backend]
+      - test-frontend:
+          requires: [build-frontend]
+      - test-backend:
+          requires: [build-backend]
       # - scan-backend:
       #     requires: [build-backend]
       # - scan-frontend:
