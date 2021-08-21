@@ -147,50 +147,53 @@ jobs:
               --filters "Name=tag:project,Values=udapeople" \
               --output text >> .circleci/ansible/inventory.txt
       - persist_to_workspace:
-          root: ./
+          root: ~/
           paths:
-            - .circleci/ansible/inventory.txt
+            - project/.circleci/ansible/inventory.txt
       - destroy-environment      
 
   configure-infrastructure:
     docker:
-      - image: ansible/ansible:ubuntu1604
+      - image: python:3.7-alpine3.11
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints: ["e6:b7:b9:5a:2a:73:bb:3b:4c:53:b5:06:46:ed:e0:ea"]
+      - run:
+          name: Install ansible
+          command: |
+            apk add --update ansible
+      - attach_workspace:
+         at: ~/
+      - run:
+          name: Configure Server
+          command: |
+            ansible-playbook -i .circleci/ansible/inventory.txt .circleci/ansible/configure-server.yml
       - run:
           name: Install AWS CLI
+          when: on_fail
           command: | # Adding AWS CLI to ansible runtime so that destroy-environment will work
             curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip -q awscliv2.zip
             ./aws/install
-            rm -f awscliv2.zip
-            rm -rf ./aws
-      - add_ssh_keys:
-          fingerprints: ["e6:b7:b9:5a:2a:73:bb:3b:4c:53:b5:06:46:ed:e0:ea"]
-      - attach_workspace:
-         at: ./
-      - run:
-          name: Configure Server
-          command: |
-            ansible-playbook -i inventory.txt .circleci/ansible/configure-server.yml
       - destroy-environment      
 
-#   run-migrations:
-#     docker:
-#       # Docker image here that supports NodeJS
-#     steps:
-#       # Checkout code from git
-#       - run:
-#           name: Run migrations
-#           command: |
-#             # Your code here
-#             exit 1
-#       - run:
-#           name: Send migration results to memstash
-#           command: |
-#             # Your code here
-#             exit 1
-#      # Here's where you will add some code to rollback on failure      
+  run-migrations:
+    docker:
+      - image: circleci/node:13.8.0
+    steps:
+      - checkout
+      - run:
+          name: Run migrations
+          command: |
+            npm run migrations
+      - run:
+          name: Send migration results to memstash
+          command: |
+            # Your code here
+            exit 1
+      - destroy-environment 
+     # Here's where you will add some code to rollback on failure      
 
 #   deploy-frontend:
 #     docker:
@@ -308,8 +311,8 @@ workflows:
               only: [master]
       - configure-infrastructure:
           requires: [deploy-infrastructure]
-      # - run-migrations:
-      #     requires: [configure-infrastructure]
+      - run-migrations:
+          requires: [configure-infrastructure]
       # - deploy-frontend:
       #     requires: [run-migrations]
       # - deploy-backend:
