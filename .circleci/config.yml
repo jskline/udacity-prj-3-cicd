@@ -15,24 +15,20 @@ commands:
             aws cloudformation delete-stack \
               --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}"
 
-#   revert-migrations:
-#     description: Revert the last migration if successfully run in the current workflow.
-#     parameters:
-#       # Add parameter here     
-#     steps:
-#       - run:
-#           name: Revert migrations
-#           # Add when this will run
-#           command: |
-#             # Curl command here to see if there was a successful migration associated with the workflow id, store result in SUCCESS variable
-#             SUCCESS = 1
-#             if(( $SUCCESS==1 )); 
-#             then
-#             #  cd ~/project/backend
-#             #  npm install
-#             #  Add revert code here. You can find this in the Getting Started section.
-#               exit 1
-#             fi
+  revert-migrations:
+    description: Revert the last migration if successfully run in the current workflow.    
+    steps:
+      - run:
+          name: Revert migrations
+          when: on_fail
+          command: |
+            MIGRATIONS=$(curl -H "token: ${MEMSTASH_TOKEN}" --request GET https://api.memstash.io/values/migration_${CIRCLE_WORKFLOW_ID:0:7})
+            if(( $MIGRATIONS==1 )); 
+            then
+              cd ~/project/backend
+              npm install
+              npm run migrations:revert
+            fi
             
 jobs:
   build-frontend:
@@ -140,12 +136,20 @@ jobs:
               --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
               --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  
       - run:
-          name: Add back-end ip to ansible inventory
+          name: Save back-end ip to memstash and inventory
           command: |
-            aws ec2 describe-instances \
+            BACKEND=$(aws ec2 describe-instances \
               --query 'Reservations[*].Instances[*].PublicIpAddress' \
               --filters "Name=tag:project,Values=udapeople" \
-              --output text >> .circleci/ansible/inventory.txt
+              --output text)
+
+              curl -H "Content-Type: text/plain" \
+                -H "token: ${MEMSTASH_TOKEN}" \
+                --request PUT \
+                --data "$BACKEND" \
+                https://api.memstash.io/values/backend-ip-${CIRCLE_WORKFLOW_ID:0:7}
+
+              echo $BACKEND >> .circleci/ansible/inventory.txt
       - persist_to_workspace:
           root: ~/
           paths:
@@ -184,16 +188,27 @@ jobs:
     steps:
       - checkout
       - run:
+          working_directory: backend/
           name: Run migrations
           command: |
-            npm run migrations
+            npm i
+            npm run migrations:revert
+            npm run migrations > migrations.out
+            cat migrations.out
       - run:
           name: Send migration results to memstash
           command: |
-            # Your code here
-            exit 1
-      - destroy-environment 
-     # Here's where you will add some code to rollback on failure      
+            if grep -q "has been executed successfully" backend/migrations.out; then
+              curl -H "Content-Type: text/plain" \
+                -H "token: ${MEMSTASH_TOKEN}" \
+                --request PUT \
+                --data "Successful Migration" \
+                https://api.memstash.io/values/migration_${CIRCLE_WORKFLOW_ID:0:7}
+            else
+              exit 1
+            fi
+      - destroy-environment
+      - revert-migrations     
 
 #   deploy-frontend:
 #     docker:
