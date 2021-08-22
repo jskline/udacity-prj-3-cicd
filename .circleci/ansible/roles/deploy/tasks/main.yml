@@ -1,0 +1,28 @@
+---
+
+- name: "Create directory"
+  become_user: true
+  file:
+    path: ~/udapeople-backend/
+    state: directory
+
+- name: "Unpackage backend"
+  become_user: true
+  unarchive:
+    src: files/backend.tgz
+    dest: ~/udapeople-backend/
+
+- name: "Run backend"
+  become_user: true
+  shell: |
+    cd ~/udapeople-backend/
+    echo $TYPEORM_CONNECTION
+    echo $TYPEORM_ENTITIES
+    echo $TYPEORM_HOST
+    echo $TYPEORM_PORT
+    echo $TYPEORM_USERNAME
+    echo $TYPEORM_PASSWORD
+    echo $TYPEORM_DATABASE
+
+    cd dist/
+    pm2 start npm -- run start:prod
