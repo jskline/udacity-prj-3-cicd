@@ -15,7 +15,7 @@
 - name: "Run backend"
   become_user: true
   shell: |
-    cd ~/udapeople-backend/
+    cd ~/udapeople-backend/backend
     echo $TYPEORM_CONNECTION
     echo $TYPEORM_ENTITIES
     echo $TYPEORM_HOST
@@ -24,5 +24,4 @@
     echo $TYPEORM_PASSWORD
     echo $TYPEORM_DATABASE
 
-    cd dist/
     pm2 start npm -- run start:prod
