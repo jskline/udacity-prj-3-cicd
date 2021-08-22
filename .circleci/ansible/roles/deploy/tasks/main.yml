@@ -16,13 +16,5 @@
   become_user: true
   shell: |
     cd ~/udapeople-backend/backend
-    echo $TYPEORM_CONNECTION
-    echo $TYPEORM_ENTITIES
-    echo $TYPEORM_HOST
-    echo $TYPEORM_PORT
-    echo $TYPEORM_USERNAME
-    echo $TYPEORM_PASSWORD
-    echo $TYPEORM_DATABASE
 
-    npm i
     pm2 start npm -- run start

@@ -196,6 +196,17 @@ jobs:
           working_directory: backend/
           name: Run migrations
           command: |
+            echo ENVIROMENT=production > .env
+            echo TYPEORM_CONNECTION=$TYPEORM_CONNECTION >> .env
+            echo TYPEORM_MIGRATIONS_DIR=$TYPEORM_MIGRATIONS_DIR >> .env
+            echo TYPEORM_ENTITIES=./src/modules/**/*.entity.ts >> .env
+            echo TYPEORM_MIGRATIONS=./src/migrations/*.ts >> .env
+            echo TYPEORM_HOST=$TYPEORM_HOST >> .env
+            echo TYPEORM_PORT=$TYPEORM_PORT >> .env
+            echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> .env
+            echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> .env
+            echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> .env
+
             npm i
             npm run migrations:revert
             npm run migrations > migrations.out
@@ -240,7 +251,7 @@ jobs:
                 https://api.memstash.io/values/backend-ip-${CIRCLE_WORKFLOW_ID:0:7})
             
             echo $BACKEND_IP
-            export API_URL="http://${BACKEND_IP}:3000"
+            export API_URL="http://${BACKEND_IP}:3030"
             echo "${API_URL}"
             npm i
             npm run build
@@ -266,6 +277,18 @@ jobs:
           name: Deploy backend
           command: |
             cd backend/
+            echo ENVIROMENT=production > .env
+            echo TYPEORM_CONNECTION=$TYPEORM_CONNECTION >> .env
+            echo TYPEORM_MIGRATIONS_DIR=$TYPEORM_MIGRATIONS_DIR >> .env
+            echo TYPEORM_ENTITIES=./src/modules/**/*.entity.ts >> .env
+            echo TYPEORM_MIGRATIONS=./src/migrations/*.ts >> .env
+            echo TYPEORM_HOST=$TYPEORM_HOST >> .env
+            echo TYPEORM_PORT=$TYPEORM_PORT >> .env
+            echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> .env
+            echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> .env
+            echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> .env
+            cat .env
+
             npm i
             npm run build
             cd ..
@@ -301,7 +324,7 @@ jobs:
                 --request GET \
                 https://api.memstash.io/values/backend-ip-${CIRCLE_WORKFLOW_ID:0:7})
             
-            export API_URL="http://${BACKEND_IP}:3000/api/status"
+            export API_URL="http://${BACKEND_IP}:3030/api/status"
             echo "${API_URL}"
 
             curl $API_URL
@@ -310,8 +333,8 @@ jobs:
           when: on_fail
           command: | # Adding AWS CLI to ansible runtime so that destroy-environment will work
             pip install awscli
-      - destroy-environment
-      - revert-migrations
+      #- destroy-environment
+      #- revert-migrations
 
   cloudfront-update:
     docker:
