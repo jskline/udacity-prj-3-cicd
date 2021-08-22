@@ -327,6 +327,7 @@ jobs:
             export API_URL="http://${BACKEND_IP}:3030/api/status"
             echo "${API_URL}"
 
+            sleep 60
             curl $API_URL
       - run:
           name: Install AWS CLI
