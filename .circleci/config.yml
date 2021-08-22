@@ -77,8 +77,7 @@ jobs:
       - run:
           name: Front-end test
           working_directory: frontend/
-          command: echo "npm run test"
-          #command: npm run test
+          command: npm run test
                 
   test-backend:
     docker:
@@ -90,8 +89,7 @@ jobs:
       - run:
           name: Back-end test
           working_directory: backend/
-          command: echo "npm run test"
-          #command: npm run test
+          command: npm run test
             
   scan-frontend:
     docker:
@@ -103,8 +101,7 @@ jobs:
       - run:
           name: Scan frontend dependencies
           working_directory: frontend/
-          #command: npm audit --audit-level=critical
-          command: echo "npm audit --audit-level=critical"
+          command: npm audit --audit-level=critical
 
   scan-backend:
     docker:
@@ -116,8 +113,7 @@ jobs:
       - run:
           name: Scan backend dependencies
           working_directory: backend/
-          #command: npm audit --audit-level=critical
-          command: echo "npm audit --audit-level=critical"
+          command: npm audit --audit-level=critical
 
   deploy-infrastructure:
     docker:
@@ -362,7 +358,7 @@ jobs:
               --template-file .circleci/files/cloudfront.yml \
               --stack-name udapeople-production \
               --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}" \
-              --tags project=udapeople &
+              --tags project=udapeople
       - persist_to_workspace:
           root: ~/
           paths:
@@ -370,24 +366,34 @@ jobs:
       - destroy-environment
       - revert-migrations
 
-# cleanup:
-#     docker:
-#       # Docker image here
-#     steps:
-#       # Checkout code from git
-#       - run:
-#           name: Get old stack workflow id
-#           command: |
-#             # your code here
-#             export OldWorkflowID="the id here"
-#             export STACKS=[] #put the list of stacks here
-#       - run:
-#           name: Remove old stacks and files
-#           command: |
-#             if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
-#             then
-#               # your code here
-#             fi
+  cleanup:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Remove old stacks and files
+          command: |
+            OldWorkflowID=$(cat ~/old_workflow.txt)
+            echo Old Workflow ID: "$OldWorkflowID"
+
+            export STACKS=($(aws cloudformation list-stacks \
+              --query "StackSummaries[*].StackName" \
+              --stack-status-filter CREATE_COMPLETE \
+              --no-paginate \
+              --output text))
+
+            # Check for current workflow
+            if [$OldWorkflowID != ${CIRCLE_WORKFLOW_ID:0:7}]
+            then
+              if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
+              then
+                aws s3 rm s3://udapeople-${OldWorkflowID} --recursive
+                aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
+                aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
+              fi
+            fi
             
 
 workflows:
@@ -420,5 +426,5 @@ workflows:
           requires: [deploy-backend, deploy-frontend]
       - cloudfront-update:
           requires: [smoke-test]
-      # - cleanup:
-      #     requires: [cloudfront-update]
+      - cleanup:
+          requires: [cloudfront-update]
