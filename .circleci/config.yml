@@ -210,43 +210,62 @@ jobs:
       - destroy-environment
       - revert-migrations     
 
-#   deploy-frontend:
-#     docker:
-#       # Docker image here that supports AWS CLI
-#     steps:
-#       # Checkout code from git
-#       - run:
-#           name: Install dependencies
-#           command: |
-#             # your code here
-#       - run:
-#           name: Get backend url
-#           command: |
-#             # your code here
-#             export API_URL="http://${BACKEND_IP}:3030"
-#             echo "${API_URL}"
-#       - run:
-#           name: Deploy frontend objects
-#           command: |
-#             # your code here
-#       # Here's where you will add some code to rollback on failure      
+  deploy-frontend:
+    docker:
+      - image: python:3.7-alpine3.11
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: |
+              apk add --update nodejs npm curl
+              pip install awscli
+      - run:
+          name: Get backend url
+          command: |
+            BACKEND_IP=$(curl -H "Content-Type: text/plain" \
+                -H "token: ${MEMSTASH_TOKEN}" \
+                --request GET \
+                https://api.memstash.io/values/backend-ip-${CIRCLE_WORKFLOW_ID:0:7})
+            
+            echo $BACKEND_IP
+            export API_URL="http://${BACKEND_IP}:3030"
+      - run:
+          name: Deploy frontend objects
+          working_directory: frontend/
+          command: |
+            echo "${API_URL}"
+            npm i
+            npm run build
+            aws s3 sync dist/ s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7}
+      - destroy-environment
+      - revert-migrations       
                     
-#   deploy-backend:
-#     docker:
-#       # Docker image here that supports Ansible
-#     steps:
-#       # Checkout code from git
-#       # Add ssh keys with fingerprint
-#       # attach workspace
-#       - run:
-#           name: Install dependencies
-#           command: |
-#             # your code here
-#       - run:
-#           name: Deploy backend
-#           command: |
-#             # your code here
-#       # Here's where you will add some code to rollback on failure  
+  deploy-backend:
+    docker:
+      - image: python:3.7-alpine3.11
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints: ["e6:b7:b9:5a:2a:73:bb:3b:4c:53:b5:06:46:ed:e0:ea"]
+      - run:
+          name: Install ansible
+          command: |
+            apk add --update ansible
+      - attach_workspace:
+         at: ~/
+      - run:
+          name: Install dependencies
+          command: |
+            # your code here
+            exit 1
+      - run:
+          name: Deploy backend
+          command: |
+            # your code here
+            exit 1
+      - destroy-environment
+      - revert-migrations 
 
 #   smoke-test:
 #     docker:
@@ -328,8 +347,8 @@ workflows:
           requires: [deploy-infrastructure]
       - run-migrations:
           requires: [configure-infrastructure]
-      # - deploy-frontend:
-      #     requires: [run-migrations]
+      - deploy-frontend:
+          requires: [run-migrations]
       # - deploy-backend:
       #     requires: [run-migrations]
       # - smoke-test:
