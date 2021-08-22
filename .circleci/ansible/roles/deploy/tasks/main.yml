@@ -24,4 +24,5 @@
     echo $TYPEORM_PASSWORD
     echo $TYPEORM_DATABASE
 
-    pm2 start npm -- run start:prod
+    npm i
+    pm2 start npm -- run start
